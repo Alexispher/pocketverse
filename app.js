@@ -13,11 +13,31 @@ const dom = {
   status: $("#statusText"),
 };
 
+/*
+  MODO DE CARREGAMENTO DO EMULADOR
+
+  Para TESTAR AGORA, deixei em CDN porque evita erro de pasta data incompleta,
+  cache antigo ou core faltando no GitHub Pages.
+
+  Quando tudo estiver funcionando e você quiser deixar local/offline,
+  troque para:
+
+  const DATA_PATH = "./data/";
+  const LOADER_PATH = "./data/loader.js";
+*/
+const DATA_PATH = "https://cdn.emulatorjs.org/stable/data/";
+const LOADER_PATH = "https://cdn.emulatorjs.org/stable/data/loader.js";
+
+// Para usar a pasta local data/, use estas duas linhas no lugar das duas acima:
+// const DATA_PATH = "./data/";
+// const LOADER_PATH = "./data/loader.js";
+
 const DB_NAME = "pocketverse-db";
 const STORE_NAME = "rom-store";
 const LAST_ROM_KEY = "last-rom";
 
 let selectedRom = null;
+let selectedRomDataUrl = null;
 let isOn = false;
 let emulatorStarted = false;
 let bootTimer = null;
@@ -111,7 +131,7 @@ function getRomCore(fileName) {
   const lower = fileName.toLowerCase();
 
   if (lower.endsWith(".gbc")) {
-    return "gbc";
+    return "gb";
   }
 
   if (lower.endsWith(".gb")) {
@@ -125,6 +145,24 @@ function getRomCore(fileName) {
   return "gb";
 }
 
+function validateRomFile(file) {
+  const validExtensions = [".gb", ".gbc", ".zip"];
+  const lowerName = file.name.toLowerCase();
+
+  return validExtensions.some((extension) => lowerName.endsWith(extension));
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+
+    reader.readAsDataURL(file);
+  });
+}
+
 function resetGameContainer() {
   if (!dom.game) return;
 
@@ -132,7 +170,15 @@ function resetGameContainer() {
   dom.game.removeAttribute("style");
 }
 
-function startGame(file) {
+function removePreviousLoader() {
+  const oldLoader = document.querySelector('script[data-pocketverse-loader="true"]');
+
+  if (oldLoader) {
+    oldLoader.remove();
+  }
+}
+
+async function startGame(file) {
   if (!file) {
     setStatus("Escolha uma ROM primeiro.");
     return;
@@ -143,7 +189,22 @@ function startGame(file) {
     return;
   }
 
+  if (!validateRomFile(file)) {
+    setStatus("Arquivo inválido. Use .gb, .gbc ou .zip.");
+    return;
+  }
+
   powerOn();
+
+  try {
+    if (!selectedRomDataUrl) {
+      setStatus("Lendo ROM local...");
+      selectedRomDataUrl = await readFileAsDataUrl(file);
+    }
+  } catch {
+    setStatus("Não consegui ler a ROM local. Tente selecionar o arquivo novamente.");
+    return;
+  }
 
   if (dom.emptyScreen) {
     dom.emptyScreen.style.display = "none";
@@ -151,28 +212,30 @@ function startGame(file) {
 
   dom.gameScreen?.classList.add("running");
   resetGameContainer();
+  removePreviousLoader();
 
-  const gameUrl = URL.createObjectURL(file);
   const core = getRomCore(file.name);
   const cleanGameName = file.name.replace(/\.(gb|gbc|zip)$/i, "");
 
   window.EJS_player = "#game";
-  window.EJS_gameUrl = gameUrl;
+  window.EJS_gameUrl = selectedRomDataUrl;
   window.EJS_core = core;
   window.EJS_gameName = cleanGameName;
-
-  // Pasta local do EmulatorJS. Ela deve estar na raiz do repositório.
-  window.EJS_pathtodata = "./data/";
-
+  window.EJS_pathtodata = DATA_PATH;
   window.EJS_startOnLoaded = true;
-  window.EJS_volume = 0.85;
-  window.EJS_language = "pt-BR";
   window.EJS_fullscreenOnLoaded = false;
-  window.EJS_disableDatabases = false;
+  window.EJS_volume = 0.85;
+
+  /*
+    Não defina EJS_language aqui.
+    Se o arquivo de localização não existir exatamente com esse nome,
+    algumas versões do EmulatorJS podem falhar silenciosamente.
+  */
 
   const script = document.createElement("script");
-  script.src = "./data/loader.js";
+  script.src = LOADER_PATH;
   script.async = true;
+  script.dataset.pocketverseLoader = "true";
 
   script.onload = () => {
     emulatorStarted = true;
@@ -186,7 +249,7 @@ function startGame(file) {
       dom.emptyScreen.style.display = "flex";
     }
 
-    setStatus("Erro: não encontrei ./data/loader.js. Confira se a pasta data está na raiz do projeto.");
+    setStatus("Erro ao carregar o EmulatorJS. Confira a conexão ou volte para o modo local em ./data/.");
   };
 
   document.body.appendChild(script);
@@ -233,9 +296,7 @@ function bindPhysicalKeyboardToVisualButtons() {
 
       if (!key) return;
 
-      // Evita que setas e espaço de navegação rolem a página enquanto joga.
       event.preventDefault();
-
       setVisualButtonPressed(key, true);
     },
     true
@@ -249,7 +310,6 @@ function bindPhysicalKeyboardToVisualButtons() {
       if (!key) return;
 
       event.preventDefault();
-
       setVisualButtonPressed(key, false);
     },
     true
@@ -429,19 +489,16 @@ function setupEvents() {
       return;
     }
 
-    const validExtensions = [".gb", ".gbc", ".zip"];
-    const lowerName = file.name.toLowerCase();
-
-    const isValid = validExtensions.some((extension) => {
-      return lowerName.endsWith(extension);
-    });
-
-    if (!isValid) {
+    if (!validateRomFile(file)) {
+      selectedRom = null;
+      selectedRomDataUrl = null;
       setStatus("Arquivo inválido. Use .gb, .gbc ou .zip.");
       return;
     }
 
     selectedRom = file;
+    selectedRomDataUrl = null;
+
     await saveLastRom(file);
 
     setStatus(`ROM selecionada: ${file.name}. Agora clique em Ligar console.`);
@@ -457,6 +514,7 @@ function setupEvents() {
       }
 
       selectedRom = file;
+      selectedRomDataUrl = null;
       setStatus(`Última ROM carregada: ${file.name}.`);
       startGame(file);
     } catch {
