@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080b12" />
+  <title>PocketVerse Retro Pocket Console</title>
+  <link rel="stylesheet" href="./style.css?v=direct-1" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">PocketVerse</p>
+      <h1>Retro Pocket Console</h1>
+      <p class="subtitle">
+        Console retrô em navegador com carregamento direto por arquivo local hospedado no próprio projeto.
+      </p>
+    </header>
+
+    <section class="launcher" aria-label="Controle de inicialização">
+      <button id="bootBtn" class="launcher-btn primary" type="button">Ligar console</button>
+      <button id="resetBtn" class="launcher-btn" type="button">Reiniciar</button>
+
+      <p id="statusText" class="status-text">
+        Pronto. Clique em Ligar console para iniciar.
+      </p>
+    </section>
+
+    <section class="wrapper" aria-label="Console retrô portátil">
+      <button class="power" id="powerButton" type="button" aria-label="Ligar console"></button>
+
+      <div class="console">
+        <div class="console-top">
+          <div class="corner left"></div>
+          <div class="switch-label">
+            <span>◁ OFF·ON ▷</span>
+          </div>
+          <div class="corner right"></div>
+        </div>
+
+        <div class="screen-frame">
+          <div class="matrix-row">
+            <span>PIXEL MATRIX WITH STEREO SOUND</span>
+          </div>
+
+          <div class="screen-bottom">
+            <div class="battery">
+              <div id="batteryLed" class="led"></div>
+              <span>BATTERY</span>
+            </div>
+
+            <div id="gameScreen" class="game-screen">
+              <div id="bootLogo" class="boot-logo">PocketVerse</div>
+
+              <div id="emptyScreen" class="empty-screen">
+                <strong>READY</strong>
+                <small>Pressione Ligar console.</small>
+              </div>
+
+              <div id="game"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="brand">
+          <span>Retro</span>
+          <span>POCKET</span>
+          <sub>™</sub>
+        </div>
+
+        <div class="controls">
+          <div class="cross" aria-label="Direcional">
+            <button class="cursor up" data-key="ArrowUp" type="button" aria-label="Cima"></button>
+            <button class="cursor left" data-key="ArrowLeft" type="button" aria-label="Esquerda"></button>
+            <button class="cursor center" type="button" aria-hidden="true">
+              <span class="circle"></span>
+            </button>
+            <button class="cursor right" data-key="ArrowRight" type="button" aria-label="Direita"></button>
+            <button class="cursor down" data-key="ArrowDown" type="button" aria-label="Baixo"></button>
+          </div>
+
+          <div class="buttons" aria-label="Botões A e B">
+            <button class="round-button button-b" data-key="z" data-button="B" type="button" aria-label="Botão B"></button>
+            <button class="round-button button-a" data-key="x" data-button="A" type="button" aria-label="Botão A"></button>
+          </div>
+        </div>
+
+        <div class="speaker" aria-hidden="true">
+          <div class="band"></div>
+          <div class="band"></div>
+          <div class="band"></div>
+          <div class="band"></div>
+          <div class="band"></div>
+          <div class="band"></div>
+        </div>
+
+        <div class="console-bottom">
+          <div class="game-controls">
+            <div class="gap">
+              <button class="small-button" data-key="v" data-button="SELECT" type="button" aria-label="Select"></button>
+            </div>
+            <div class="gap">
+              <button class="small-button" data-key="Enter" data-button="START" type="button" aria-label="Start"></button>
+            </div>
+          </div>
+
+          <div class="phones">🎧 PHONES</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="help">
+      <p><strong>Teclado:</strong> Setas = direcional · Z = B · X = A · V = Select · Enter = Start.</p>
+      <p><strong>Arquivo esperado:</strong> <code>roms/game.gb</code></p>
+    </section>
+  </main>
+
+  <script src="./app.js?v=direct-1"></script>
+</body>
+</html>
