@@ -1,10 +1,10 @@
 {
-  "name": "Retro Pocket GB",
-  "short_name": "RetroGB",
-  "start_url": "./",
+  "name": "PocketVerse Retro Engine",
+  "short_name": "PocketVerse",
+  "description": "Retro pocket web emulator with offline shell, audio and local ROM loading.",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#111827",
-  "description": "Interface retrô para jogar ROMs próprias de Game Boy no navegador.",
-  "orientation": "portrait"
+  "background_color": "#0b0d14",
+  "theme_color": "#0b0d14",
+  "icons": []
 }
