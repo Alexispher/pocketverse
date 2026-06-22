@@ -14,21 +14,21 @@ const dom = {
 };
 
 /*
-  MODO DE CARREGAMENTO DO EMULADOR
+  RUNTIME DO EMULADOR
 
-  Para TESTAR AGORA, deixei em CDN porque evita erro de pasta data incompleta,
-  cache antigo ou core faltando no GitHub Pages.
+  Este modo usa a CDN estável do EmulatorJS para evitar tela preta por:
+  - pasta data incompleta;
+  - cache antigo do GitHub Pages;
+  - arquivos de core faltando;
+  - upload parcial da pasta data.
 
-  Quando tudo estiver funcionando e você quiser deixar local/offline,
-  troque para:
-
-  const DATA_PATH = "./data/";
-  const LOADER_PATH = "./data/loader.js";
+  Depois que tudo estiver funcionando, dá para voltar para runtime local.
 */
+
 const DATA_PATH = "https://cdn.emulatorjs.org/stable/data/";
 const LOADER_PATH = "https://cdn.emulatorjs.org/stable/data/loader.js";
 
-// Para usar a pasta local data/, use estas duas linhas no lugar das duas acima:
+// Para usar a pasta local data/ no futuro, troque pelas linhas abaixo:
 // const DATA_PATH = "./data/";
 // const LOADER_PATH = "./data/loader.js";
 
@@ -69,6 +69,7 @@ function powerOn() {
   playBootTone();
 
   window.clearTimeout(bootTimer);
+
   bootTimer = window.setTimeout(() => {
     dom.gameScreen?.classList.remove("startup");
   }, 1500);
@@ -123,18 +124,18 @@ function playBootTone() {
     osc.start();
     osc.stop(ctx.currentTime + 0.26);
   } catch {
-    // Alguns navegadores bloqueiam áudio até haver interação do usuário.
+    // Alguns navegadores bloqueiam áudio até interação do usuário.
   }
 }
 
 function getRomCore(fileName) {
   const lower = fileName.toLowerCase();
 
-  if (lower.endsWith(".gbc")) {
+  if (lower.endsWith(".gb")) {
     return "gb";
   }
 
-  if (lower.endsWith(".gb")) {
+  if (lower.endsWith(".gbc")) {
     return "gb";
   }
 
@@ -146,6 +147,8 @@ function getRomCore(fileName) {
 }
 
 function validateRomFile(file) {
+  if (!file) return false;
+
   const validExtensions = [".gb", ".gbc", ".zip"];
   const lowerName = file.name.toLowerCase();
 
@@ -171,11 +174,34 @@ function resetGameContainer() {
 }
 
 function removePreviousLoader() {
-  const oldLoader = document.querySelector('script[data-pocketverse-loader="true"]');
+  $$('script[data-pocketverse-loader="true"]').forEach((script) => {
+    script.remove();
+  });
+}
 
-  if (oldLoader) {
-    oldLoader.remove();
-  }
+function clearEmulatorGlobals() {
+  const keys = [
+    "EJS_player",
+    "EJS_gameUrl",
+    "EJS_core",
+    "EJS_gameName",
+    "EJS_pathtodata",
+    "EJS_startOnLoaded",
+    "EJS_fullscreenOnLoaded",
+    "EJS_volume",
+    "EJS_Buttons",
+    "EJS_language",
+    "EJS_disableDatabases",
+    "EJS_threads",
+  ];
+
+  keys.forEach((key) => {
+    try {
+      delete window[key];
+    } catch {
+      window[key] = undefined;
+    }
+  });
 }
 
 async function startGame(file) {
@@ -211,8 +237,10 @@ async function startGame(file) {
   }
 
   dom.gameScreen?.classList.add("running");
+
   resetGameContainer();
   removePreviousLoader();
+  clearEmulatorGlobals();
 
   const core = getRomCore(file.name);
   const cleanGameName = file.name.replace(/\.(gb|gbc|zip)$/i, "");
@@ -225,12 +253,34 @@ async function startGame(file) {
   window.EJS_startOnLoaded = true;
   window.EJS_fullscreenOnLoaded = false;
   window.EJS_volume = 0.85;
+  window.EJS_disableDatabases = false;
+  window.EJS_threads = false;
 
   /*
-    Não defina EJS_language aqui.
-    Se o arquivo de localização não existir exatamente com esse nome,
-    algumas versões do EmulatorJS podem falhar silenciosamente.
+    Remove o menu gigante do EmulatorJS.
+    Assim a tela fica limpa para jogar.
   */
+
+  window.EJS_Buttons = {
+    playPause: false,
+    restart: false,
+    mute: false,
+    settings: false,
+    fullscreen: false,
+    saveState: false,
+    loadState: false,
+    screenRecord: false,
+    gamepad: false,
+    cheat: false,
+    volume: false,
+    saveSavFiles: false,
+    loadSavFiles: false,
+    quickSave: false,
+    quickLoad: false,
+    screenshot: false,
+    cacheManager: false,
+    exitEmulation: false,
+  };
 
   const script = document.createElement("script");
   script.src = LOADER_PATH;
@@ -240,6 +290,11 @@ async function startGame(file) {
   script.onload = () => {
     emulatorStarted = true;
     setStatus(`Rodando: ${file.name}`);
+
+    window.setTimeout(() => {
+      focusGameScreen();
+      forceCloseEmulatorOverlay();
+    }, 1200);
   };
 
   script.onerror = () => {
@@ -249,12 +304,52 @@ async function startGame(file) {
       dom.emptyScreen.style.display = "flex";
     }
 
-    setStatus("Erro ao carregar o EmulatorJS. Confira a conexão ou volte para o modo local em ./data/.");
+    setStatus("Erro ao carregar o EmulatorJS. Confira a conexão ou a pasta data.");
   };
 
   document.body.appendChild(script);
 
   setStatus(`Carregando ${file.name}...`);
+}
+
+function focusGameScreen() {
+  if (!dom.game) return;
+
+  dom.game.setAttribute("tabindex", "0");
+  dom.game.focus({ preventScroll: true });
+}
+
+function forceCloseEmulatorOverlay() {
+  /*
+    Em algumas versões, o menu aparece aberto na primeira carga.
+    Este bloco tenta fechar sem prejudicar o jogo.
+  */
+
+  const escapeDown = new KeyboardEvent("keydown", {
+    key: "Escape",
+    code: "Escape",
+    keyCode: 27,
+    which: 27,
+    bubbles: true,
+    cancelable: true,
+  });
+
+  const escapeUp = new KeyboardEvent("keyup", {
+    key: "Escape",
+    code: "Escape",
+    keyCode: 27,
+    which: 27,
+    bubbles: true,
+    cancelable: true,
+  });
+
+  document.dispatchEvent(escapeDown);
+  window.dispatchEvent(escapeDown);
+
+  document.dispatchEvent(escapeUp);
+  window.dispatchEvent(escapeUp);
+
+  focusGameScreen();
 }
 
 function normalizeKey(eventOrKey) {
@@ -515,29 +610,53 @@ function setupEvents() {
 
       selectedRom = file;
       selectedRomDataUrl = null;
+
       setStatus(`Última ROM carregada: ${file.name}.`);
       startGame(file);
     } catch {
       setStatus("Não foi possível recuperar a última ROM.");
     }
   });
+
+  dom.game?.addEventListener("click", () => {
+    focusGameScreen();
+  });
 }
 
-function registerServiceWorker() {
-  if (!("serviceWorker" in navigator)) {
-    return;
+async function disableOldServiceWorkerCache() {
+  /*
+    Durante os testes, isto evita que o GitHub Pages continue servindo
+    arquivos antigos pelo cache do Service Worker.
+  */
+
+  if ("serviceWorker" in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+
+      registrations.forEach((registration) => {
+        registration.unregister();
+      });
+    } catch {
+      // Ignora falha de limpeza.
+    }
   }
 
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
-      // O site continua funcionando mesmo sem Service Worker.
-    });
-  });
+  if ("caches" in window) {
+    try {
+      const keys = await caches.keys();
+
+      keys.forEach((key) => {
+        caches.delete(key);
+      });
+    } catch {
+      // Ignora falha de limpeza.
+    }
+  }
 }
 
 setupEvents();
 bindVirtualButtons();
 bindPhysicalKeyboardToVisualButtons();
-registerServiceWorker();
+disableOldServiceWorkerCache();
 
 setStatus("Pronto. Escolha uma ROM local para iniciar.");
