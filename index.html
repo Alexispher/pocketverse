@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Retro Pocket GB</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page-shell">
+    <section class="panel" aria-label="Configurações do jogo">
+      <p class="eyebrow">GitHub Pages • Offline • Saves locais</p>
+      <h1>Retro Pocket GB</h1>
+      <p class="intro">
+        Carregue uma ROM de Game Boy que você possua legalmente. O arquivo e o progresso ficam salvos apenas no navegador deste aparelho.
+      </p>
+
+      <div class="actions">
+        <label class="file-button" for="romInput">Escolher ROM .gb/.gbc/.zip</label>
+        <input id="romInput" type="file" accept=".gb,.gbc,.zip,application/zip,application/octet-stream" />
+        <button id="startButton" class="primary-button" type="button">Iniciar jogo</button>
+        <button id="clearButton" class="ghost-button" type="button">Apagar ROM salva</button>
+      </div>
+
+      <p id="status" class="status" role="status">Nenhuma ROM carregada.</p>
+
+      <div class="controls-help">
+        <strong>Teclado padrão:</strong>
+        <span>Setas = D-pad</span>
+        <span>Z = B</span>
+        <span>X = A</span>
+        <span>V = Select</span>
+        <span>Enter = Start</span>
+      </div>
+    </section>
+
+    <section class="gameboy" aria-label="Console retrô interativo">
+      <div class="body-upper">
+        <div class="screen-housing">
+          <div class="dot-matrix-row">
+            <div class="deco-lines" aria-hidden="true">
+              <div class="deco-line-pink"></div>
+              <div class="deco-line-blue"></div>
+            </div>
+            <span class="dot-matrix-label">PIXEL MATRIX WITH STEREO SOUND</span>
+            <div class="deco-lines" aria-hidden="true">
+              <div class="deco-line-pink"></div>
+              <div class="deco-line-blue"></div>
+            </div>
+          </div>
+
+          <div class="screen-inner">
+            <div class="battery-indicator" aria-hidden="true">
+              <div class="battery-dot"></div>
+              <span class="battery-text">POWER</span>
+            </div>
+
+            <div class="screen">
+              <div id="emptyScreen" class="screen-content">
+                <div class="screen-title" aria-hidden="true">
+                  <span>R</span><span>E</span><span>T</span><span>R</span><span>O</span>
+                  <span>G</span><span>B</span>
+                </div>
+                <div class="screen-bar-wrap"><div class="screen-bar"></div></div>
+                <p class="screen-message">Escolha uma ROM e toque em iniciar</p>
+              </div>
+              <div id="game" class="emulator-slot" aria-label="Tela do emulador"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="logo-row">
+          <span class="logo-nintendo">Retro</span>
+          <span class="logo-gameboy">POCKET GB</span>
+          <span class="logo-tm">™</span>
+        </div>
+      </div>
+
+      <div class="body-lower">
+        <div class="controls-row">
+          <div class="dpad-wrap" aria-label="Direcional">
+            <div class="dpad-arm dpad-h" aria-hidden="true"></div>
+            <div class="dpad-arm dpad-v" aria-hidden="true"></div>
+            <div class="dpad-centre" aria-hidden="true"></div>
+            <button class="dpad-button dpad-up control-button" data-key="ArrowUp" aria-label="Cima"></button>
+            <button class="dpad-button dpad-down control-button" data-key="ArrowDown" aria-label="Baixo"></button>
+            <button class="dpad-button dpad-left control-button" data-key="ArrowLeft" aria-label="Esquerda"></button>
+            <button class="dpad-button dpad-right control-button" data-key="ArrowRight" aria-label="Direita"></button>
+          </div>
+
+          <div class="ab-group" aria-label="Botões A e B">
+            <div class="ab-row">
+              <div class="button-ab-wrap button-b-offset">
+                <button class="button-ab control-button" data-key="z" aria-label="Botão B"></button>
+                <span class="button-ab-label">B</span>
+              </div>
+              <div class="button-ab-wrap">
+                <button class="button-ab control-button" data-key="x" aria-label="Botão A"></button>
+                <span class="button-ab-label">A</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="select-start-row" aria-label="Botões Select e Start">
+          <div class="button-small-wrap">
+            <button class="button-small control-button" data-key="v" aria-label="Select"></button>
+            <span class="button-small-label">SELECT</span>
+          </div>
+          <div class="button-small-wrap">
+            <button class="button-small control-button" data-key="Enter" aria-label="Start"></button>
+            <span class="button-small-label">START</span>
+          </div>
+        </div>
+
+        <div class="speaker-slits" aria-hidden="true">
+          <div class="slit"></div><div class="slit"></div><div class="slit"></div>
+          <div class="slit"></div><div class="slit"></div><div class="slit"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <noscript>Ative JavaScript para usar o emulador.</noscript>
+  <script src="app.js"></script>
+</body>
+</html>

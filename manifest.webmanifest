@@ -1,0 +1,10 @@
+{
+  "name": "Retro Pocket GB",
+  "short_name": "RetroGB",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "description": "Interface retrô para jogar ROMs próprias de Game Boy no navegador.",
+  "orientation": "portrait"
+}
