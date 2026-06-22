@@ -2,9 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
 const dom = {
-  power: $("#powerButton"),
-  led: $("#batteryLed"),
-  gameScreen: $("#gameScreen"),
+  screenFrame: $("#screenFrame"),
   emptyScreen: $("#emptyScreen"),
   game: $("#game"),
   bootBtn: $("#bootBtn"),
@@ -12,38 +10,14 @@ const dom = {
   status: $("#statusText"),
 };
 
-/*
-  IMPORTANTE
-
-  Para o jogo abrir direto, a ROM precisa estar em uma URL real do site.
-
-  Caminho esperado:
-  ./roms/game.gb
-
-  No GitHub:
-  pocketverse/
-  ├── index.html
-  ├── style.css
-  ├── app.js
-  └── roms/
-      └── game.gb
-
-  Não use espaço, acento, parênteses ou colchetes no nome do arquivo.
-*/
-
 const ROM_URL = "./roms/game.gb";
 const ROM_NAME = "Game";
 
 const DATA_PATH = "https://cdn.emulatorjs.org/stable/data/";
 const LOADER_PATH = "https://cdn.emulatorjs.org/stable/data/loader.js";
 
-// Para testar com a pasta local data/ no futuro:
-// const DATA_PATH = "./data/";
-// const LOADER_PATH = "./data/loader.js";
-
-let isOn = false;
 let emulatorStarted = false;
-let bootTimer = null;
+let cleanupTimer = null;
 
 const keyToButtonSelector = {
   ArrowUp: '[data-key="ArrowUp"]',
@@ -57,82 +31,31 @@ const keyToButtonSelector = {
 };
 
 function setStatus(message) {
-  if (dom.status) {
-    dom.status.textContent = message;
-  }
-}
-
-function powerOn() {
-  isOn = true;
-
-  dom.power?.classList.add("on");
-  dom.led?.classList.add("on");
-  dom.gameScreen?.classList.add("startup");
-
-  playBootTone();
-
-  window.clearTimeout(bootTimer);
-  bootTimer = window.setTimeout(() => {
-    dom.gameScreen?.classList.remove("startup");
-  }, 1000);
-}
-
-function playBootTone() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContext();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = "square";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.18);
-
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.24);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.26);
-  } catch {
-    // Áudio pode ser bloqueado até uma interação do usuário.
-  }
+  dom.status.textContent = message;
 }
 
 async function checkRomExists() {
   const url = new URL(ROM_URL, window.location.href).href;
 
-  try {
-    const response = await fetch(`${url}?check=${Date.now()}`, {
-      method: "GET",
-      cache: "no-store",
-    });
+  const response = await fetch(`${url}?check=${Date.now()}`, {
+    method: "GET",
+    cache: "no-store",
+  });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-
-    if (contentType.includes("text/html")) {
-      throw new Error("A URL da ROM retornou HTML. Provavelmente é uma página 404.");
-    }
-
-    return url;
-  } catch (error) {
-    throw new Error(
-      `Não encontrei a ROM em ${ROM_URL}. Crie a pasta roms e coloque o arquivo como game.gb. Detalhe: ${error.message}`
-    );
+  if (!response.ok) {
+    throw new Error(`ROM não encontrada em ${ROM_URL}.`);
   }
+
+  const contentType = response.headers.get("content-type") || "";
+
+  if (contentType.includes("text/html")) {
+    throw new Error(`A URL ${ROM_URL} retornou HTML. Provavelmente é 404.`);
+  }
+
+  return url;
 }
 
 function resetGameContainer() {
-  if (!dom.game) return;
-
   dom.game.innerHTML = "";
   dom.game.removeAttribute("style");
 }
@@ -157,6 +80,8 @@ function clearEmulatorGlobals() {
     "EJS_disableDatabases",
     "EJS_threads",
     "EJS_language",
+    "EJS_color",
+    "EJS_backgroundColor",
   ].forEach((key) => {
     try {
       delete window[key];
@@ -166,15 +91,14 @@ function clearEmulatorGlobals() {
   });
 }
 
-async function startGameDirect() {
+async function startGame() {
   if (emulatorStarted) {
-    setStatus("O jogo já está rodando.");
-    focusGameScreen();
+    focusGame();
+    setStatus("Jogo já iniciado.");
     return;
   }
 
-  powerOn();
-  setStatus("Verificando ROM em roms/game.gb...");
+  setStatus("Verificando ROM...");
 
   let romUrl;
 
@@ -185,15 +109,11 @@ async function startGameDirect() {
     return;
   }
 
-  if (dom.emptyScreen) {
-    dom.emptyScreen.style.display = "none";
-  }
-
-  dom.gameScreen?.classList.add("running");
-
   resetGameContainer();
   removePreviousLoader();
   clearEmulatorGlobals();
+
+  dom.screenFrame.classList.add("running");
 
   window.EJS_player = "#game";
   window.EJS_gameUrl = romUrl;
@@ -234,72 +154,129 @@ async function startGameDirect() {
 
   script.onload = () => {
     emulatorStarted = true;
-    setStatus(`Rodando: ${ROM_NAME}`);
-
-    window.setTimeout(() => {
-      focusGameScreen();
-      closeRetroArchMenu();
-    }, 1800);
+    setStatus("Jogo carregado. Clique na tela e use o teclado.");
+    startInterfaceCleanup();
+    window.setTimeout(focusGame, 1000);
   };
 
   script.onerror = () => {
-    dom.gameScreen?.classList.remove("running");
-
-    if (dom.emptyScreen) {
-      dom.emptyScreen.style.display = "flex";
-    }
-
+    dom.screenFrame.classList.remove("running");
     setStatus("Erro ao carregar o EmulatorJS.");
   };
 
   document.body.appendChild(script);
-
   setStatus("Carregando jogo...");
 }
 
-function hardResetPage() {
-  window.location.reload();
+function startInterfaceCleanup() {
+  stopInterfaceCleanup();
+
+  cleanupTimer = window.setInterval(() => {
+    cleanEmulatorOverlay();
+    closeRetroArchMenu();
+  }, 700);
+
+  window.setTimeout(() => {
+    stopInterfaceCleanup();
+    cleanEmulatorOverlay();
+    focusGame();
+  }, 8000);
 }
 
-function focusGameScreen() {
-  if (!dom.game) return;
+function stopInterfaceCleanup() {
+  if (cleanupTimer) {
+    window.clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
+}
 
+function cleanEmulatorOverlay() {
+  const root = dom.game;
+
+  const selectors = [
+    '[class*="ejs_menu"]',
+    '[class*="ejs_context"]',
+    '[class*="ejs_button"]',
+    '[class*="ejs_start"]',
+    '[class*="ejs_loading"]',
+    '[class*="ejs_volume"]',
+    '[class*="ejs_control"]',
+    '[class*="ejs_settings"]',
+    '[class*="ejs_virtual"]',
+    '[id*="menu"]',
+    '[id*="context"]',
+    '[id*="volume"]',
+    '[id*="settings"]',
+    '[id*="controls"]'
+  ];
+
+  selectors.forEach((selector) => {
+    root.querySelectorAll(selector).forEach((element) => {
+      if (element.tagName.toLowerCase() !== "canvas") {
+        element.style.display = "none";
+        element.style.opacity = "0";
+        element.style.pointerEvents = "none";
+      }
+    });
+  });
+
+  root.querySelectorAll("*").forEach((element) => {
+    const text = (element.textContent || "").trim();
+
+    const shouldHide =
+      text.includes("EmulatorJS") ||
+      text.includes("Context Menu") ||
+      text.includes("Início") ||
+      text.includes("Fechar") ||
+      text.includes("volume") ||
+      text.includes("Settings") ||
+      text.includes("Main Menu");
+
+    if (shouldHide && element.tagName.toLowerCase() !== "canvas") {
+      element.style.display = "none";
+      element.style.opacity = "0";
+      element.style.pointerEvents = "none";
+    }
+  });
+}
+
+function closeRetroArchMenu() {
+  sendKey("Escape", "Escape", 27);
+}
+
+function sendKey(key, code, keyCode) {
+  const down = new KeyboardEvent("keydown", {
+    key,
+    code,
+    keyCode,
+    which: keyCode,
+    bubbles: true,
+    cancelable: true,
+  });
+
+  const up = new KeyboardEvent("keyup", {
+    key,
+    code,
+    keyCode,
+    which: keyCode,
+    bubbles: true,
+    cancelable: true,
+  });
+
+  [down, up].forEach((event) => {
+    document.dispatchEvent(event);
+    window.dispatchEvent(event);
+    dom.game.dispatchEvent(event);
+  });
+}
+
+function focusGame() {
   dom.game.setAttribute("tabindex", "0");
   dom.game.focus({ preventScroll: true });
 }
 
-function closeRetroArchMenu() {
-  const sendEscape = () => {
-    const events = [
-      new KeyboardEvent("keydown", {
-        key: "Escape",
-        code: "Escape",
-        keyCode: 27,
-        which: 27,
-        bubbles: true,
-        cancelable: true,
-      }),
-      new KeyboardEvent("keyup", {
-        key: "Escape",
-        code: "Escape",
-        keyCode: 27,
-        which: 27,
-        bubbles: true,
-        cancelable: true,
-      }),
-    ];
-
-    events.forEach((event) => {
-      document.dispatchEvent(event);
-      window.dispatchEvent(event);
-      dom.game?.dispatchEvent(event);
-    });
-  };
-
-  sendEscape();
-  window.setTimeout(sendEscape, 500);
-  window.setTimeout(sendEscape, 1000);
-  window.setTimeout(focusGameScreen, 1200);
+function resetPage() {
+  window.location.reload();
 }
 
 function normalizeKey(eventOrKey) {
@@ -331,40 +308,6 @@ function setVisualButtonPressed(key, pressed) {
   if (!button) return;
 
   button.classList.toggle("pressed", pressed);
-}
-
-function bindPhysicalKeyboardToVisualButtons() {
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      const key = normalizeKey(event);
-
-      if (!key) return;
-
-      event.preventDefault();
-      setVisualButtonPressed(key, true);
-    },
-    true
-  );
-
-  document.addEventListener(
-    "keyup",
-    (event) => {
-      const key = normalizeKey(event);
-
-      if (!key) return;
-
-      event.preventDefault();
-      setVisualButtonPressed(key, false);
-    },
-    true
-  );
-
-  window.addEventListener("blur", () => {
-    Object.keys(keyToButtonSelector).forEach((key) => {
-      setVisualButtonPressed(key, false);
-    });
-  });
 }
 
 function createKeyboardEvent(type, key) {
@@ -430,22 +373,52 @@ function simulateKey(key, type) {
 
   document.dispatchEvent(event);
   window.dispatchEvent(event);
+  dom.game.dispatchEvent(event);
+}
 
-  if (dom.game) {
-    dom.game.dispatchEvent(event);
-  }
+function bindPhysicalKeyboardToVisualButtons() {
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      const key = normalizeKey(event);
+
+      if (!key) return;
+
+      event.preventDefault();
+      setVisualButtonPressed(key, true);
+    },
+    true
+  );
+
+  document.addEventListener(
+    "keyup",
+    (event) => {
+      const key = normalizeKey(event);
+
+      if (!key) return;
+
+      event.preventDefault();
+      setVisualButtonPressed(key, false);
+    },
+    true
+  );
+
+  window.addEventListener("blur", () => {
+    Object.keys(keyToButtonSelector).forEach((key) => {
+      setVisualButtonPressed(key, false);
+    });
+  });
 }
 
 function bindVirtualButtons() {
-  const controls = $$("[data-key]");
-
-  controls.forEach((button) => {
+  $$("[data-key]").forEach((button) => {
     const key = button.dataset.key;
 
     const press = (event) => {
       event.preventDefault();
       button.classList.add("pressed");
       simulateKey(key, "keydown");
+      focusGame();
     };
 
     const release = (event) => {
@@ -481,19 +454,10 @@ async function clearOldCache() {
   }
 }
 
-function setupEvents() {
-  dom.power?.addEventListener("click", startGameDirect);
-  dom.bootBtn?.addEventListener("click", startGameDirect);
-  dom.resetBtn?.addEventListener("click", hardResetPage);
+dom.bootBtn.addEventListener("click", startGame);
+dom.resetBtn.addEventListener("click", resetPage);
+dom.screenFrame.addEventListener("click", focusGame);
 
-  dom.game?.addEventListener("click", () => {
-    focusGameScreen();
-  });
-}
-
-setupEvents();
 bindVirtualButtons();
 bindPhysicalKeyboardToVisualButtons();
 clearOldCache();
-
-setStatus("Pronto. Clique em Ligar console para iniciar.");
