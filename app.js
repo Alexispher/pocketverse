@@ -22,6 +22,17 @@ let isOn = false;
 let emulatorStarted = false;
 let bootTimer = null;
 
+const keyToButtonSelector = {
+  ArrowUp: '[data-key="ArrowUp"]',
+  ArrowDown: '[data-key="ArrowDown"]',
+  ArrowLeft: '[data-key="ArrowLeft"]',
+  ArrowRight: '[data-key="ArrowRight"]',
+  z: '[data-key="z"]',
+  x: '[data-key="x"]',
+  v: '[data-key="v"]',
+  Enter: '[data-key="Enter"]',
+};
+
 function setStatus(message) {
   if (dom.status) {
     dom.status.textContent = message;
@@ -150,21 +161,13 @@ function startGame(file) {
   window.EJS_core = core;
   window.EJS_gameName = cleanGameName;
 
-  // Como você já colocou a pasta data no projeto, deixe local:
+  // Pasta local do EmulatorJS. Ela deve estar na raiz do repositório.
   window.EJS_pathtodata = "./data/";
 
   window.EJS_startOnLoaded = true;
   window.EJS_volume = 0.85;
   window.EJS_language = "pt-BR";
-
-  // Qualidade visual mais limpa dentro da tela pequena.
-  window.EJS_color = "#0f380f";
-  window.EJS_backgroundColor = "#9ca04c";
-
-  // Evita que o EmulatorJS tente abrir em fullscreen automaticamente.
   window.EJS_fullscreenOnLoaded = false;
-
-  // Mantém o foco no player.
   window.EJS_disableDatabases = false;
 
   const script = document.createElement("script");
@@ -191,21 +194,91 @@ function startGame(file) {
   setStatus(`Carregando ${file.name}...`);
 }
 
+function normalizeKey(eventOrKey) {
+  const key = typeof eventOrKey === "string" ? eventOrKey : eventOrKey.key;
+
+  if (key === "ArrowUp") return "ArrowUp";
+  if (key === "ArrowDown") return "ArrowDown";
+  if (key === "ArrowLeft") return "ArrowLeft";
+  if (key === "ArrowRight") return "ArrowRight";
+  if (key === "Enter") return "Enter";
+
+  const lower = String(key).toLowerCase();
+
+  if (lower === "z") return "z";
+  if (lower === "x") return "x";
+  if (lower === "v") return "v";
+
+  return null;
+}
+
+function setVisualButtonPressed(key, pressed) {
+  const normalizedKey = normalizeKey(key);
+  const selector = keyToButtonSelector[normalizedKey];
+
+  if (!selector) return;
+
+  const button = document.querySelector(selector);
+
+  if (!button) return;
+
+  button.classList.toggle("pressed", pressed);
+}
+
+function bindPhysicalKeyboardToVisualButtons() {
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      const key = normalizeKey(event);
+
+      if (!key) return;
+
+      // Evita que setas e espaço de navegação rolem a página enquanto joga.
+      event.preventDefault();
+
+      setVisualButtonPressed(key, true);
+    },
+    true
+  );
+
+  document.addEventListener(
+    "keyup",
+    (event) => {
+      const key = normalizeKey(event);
+
+      if (!key) return;
+
+      event.preventDefault();
+
+      setVisualButtonPressed(key, false);
+    },
+    true
+  );
+
+  window.addEventListener("blur", () => {
+    Object.keys(keyToButtonSelector).forEach((key) => {
+      setVisualButtonPressed(key, false);
+    });
+  });
+}
+
 function createKeyboardEvent(type, key) {
+  const normalizedKey = normalizeKey(key) || key;
+
   const event = new KeyboardEvent(type, {
-    key,
-    code: getCodeFromKey(key),
+    key: normalizedKey,
+    code: getCodeFromKey(normalizedKey),
     bubbles: true,
     cancelable: true,
   });
 
   try {
     Object.defineProperty(event, "keyCode", {
-      get: () => getKeyCodeFromKey(key),
+      get: () => getKeyCodeFromKey(normalizedKey),
     });
 
     Object.defineProperty(event, "which", {
-      get: () => getKeyCodeFromKey(key),
+      get: () => getKeyCodeFromKey(normalizedKey),
     });
   } catch {
     // Alguns navegadores não permitem sobrescrever keyCode/which.
@@ -245,7 +318,10 @@ function getKeyCodeFromKey(key) {
 }
 
 function simulateKey(key, type) {
-  const event = createKeyboardEvent(type, key);
+  const normalizedKey = normalizeKey(key) || key;
+  const event = createKeyboardEvent(type, normalizedKey);
+
+  setVisualButtonPressed(normalizedKey, type === "keydown");
 
   document.dispatchEvent(event);
   window.dispatchEvent(event);
@@ -403,6 +479,7 @@ function registerServiceWorker() {
 
 setupEvents();
 bindVirtualButtons();
+bindPhysicalKeyboardToVisualButtons();
 registerServiceWorker();
 
 setStatus("Pronto. Escolha uma ROM local para iniciar.");

@@ -1,4 +1,4 @@
-const CACHE_NAME = "pocketverse-shell-v1";
+const CACHE_NAME = "pocketverse-shell-v2";
 
 const CORE_ASSETS = [
   "./",

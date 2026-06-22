@@ -33,17 +33,44 @@ body {
 body {
   margin: 0;
   color: #f4f6ff;
-  background-color: #000;
-  background-image:
-    repeating-linear-gradient(
-      132deg,
-      #000 0% 10%,
-      transparent 10% 11%,
-      #000 11% 21%,
-      transparent 21% 22%
-    ),
-    linear-gradient(50deg, #7e2e52 30%, #513a8d 60%);
+  background:
+    radial-gradient(circle at 50% 10%, rgba(139, 172, 15, 0.22), transparent 26rem),
+    radial-gradient(circle at 18% 28%, rgba(126, 46, 82, 0.28), transparent 24rem),
+    radial-gradient(circle at 82% 42%, rgba(81, 58, 141, 0.30), transparent 26rem),
+    linear-gradient(180deg, #0b0e17 0%, #05070d 48%, #020309 100%);
   font-family: Lato, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black 0%, black 48%, transparent 82%);
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.25) 100%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.025) 0,
+      rgba(255, 255, 255, 0.025) 1px,
+      transparent 1px,
+      transparent 5px
+    );
+  opacity: 0.9;
 }
 
 button,
@@ -86,7 +113,9 @@ h1 {
   font-family: "Press Start 2P", monospace;
   font-size: clamp(18px, 4vw, 34px);
   line-height: 1.3;
-  text-shadow: 2px 2px 0 #fff;
+  text-shadow:
+    2px 2px 0 #ffffff,
+    0 0 18px rgba(139, 172, 15, 0.45);
 }
 
 .subtitle {
@@ -106,7 +135,10 @@ h1 {
   margin-bottom: 22px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 18px;
-  background: rgba(5, 7, 12, 0.5);
+  background: rgba(5, 7, 12, 0.68);
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(10px);
 }
 
@@ -161,6 +193,9 @@ h1 {
   height: var(--console-h);
   max-width: calc(100vw - 36px);
   position: relative;
+  filter:
+    drop-shadow(0 28px 48px rgba(0, 0, 0, 0.42))
+    drop-shadow(0 0 28px rgba(139, 172, 15, 0.08));
 }
 
 .power {
@@ -515,9 +550,11 @@ h1 {
 
 .cursor:active,
 .cursor.pressed {
-  box-shadow: none;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.75),
+    inset 2px 2px 5px rgba(0, 0, 0, 0.85);
   border-color: #111;
-  transform: translateY(1px);
+  transform: translateY(2px) scale(0.98);
 }
 
 .cursor.center:active {
@@ -567,9 +604,10 @@ h1 {
 .round-button:active,
 .round-button.pressed {
   box-shadow:
-    -3px 4px 3px rgba(0, 0, 0, 0.25) inset,
-    2px -2px 3px rgba(0, 0, 0, 0.25) inset;
-  transform: translateY(1px);
+    -3px 4px 3px rgba(0, 0, 0, 0.45) inset,
+    2px -2px 3px rgba(0, 0, 0, 0.35) inset,
+    0 1px 2px rgba(0, 0, 0, 0.95);
+  transform: translateY(3px) scale(0.96);
 }
 
 .round-button::after {
@@ -622,8 +660,9 @@ h1 {
 .small-button.pressed {
   box-shadow:
     -2px -2px 5px rgba(0, 0, 0, 0.4) inset,
-    2px 2px 5px rgba(0, 0, 0, 0.7) inset;
-  transform: translateY(1px);
+    2px 2px 5px rgba(0, 0, 0, 0.7) inset,
+    0 1px 2px rgba(0, 0, 0, 0.85);
+  transform: translateY(2px) scale(0.97);
 }
 
 .small-button::after {
